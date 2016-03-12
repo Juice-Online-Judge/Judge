@@ -1,4 +1,4 @@
-bsdjudge
+./bsdjudge
 etc/judge.conf
 src/*.o
 src/*~

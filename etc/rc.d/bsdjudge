@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# PROVIDE: bsdjudge
+# REQUIRE: 
+
+. /etc/rc.subr
+
+name="bsdjudge"
+rcvar="bsdjudge_enable"
+
+load_rc_config $name
+
+: ${bsdjudge_enable="NO"}
+
+extra_commands="reload"
+
+command="/usr/local/sbin/${name}"
+command_args="${bsdjudge_flags}"
+pidfile="/var/run/bsdjudge.pid"
+#sig_stop="TERM"
+#sig_reload="HUP"
+
+start_precmd="bsdjudge_precmd"
+
+bsdjudge_precmd()
+{
+}
+
+run_rc_command "$1"
