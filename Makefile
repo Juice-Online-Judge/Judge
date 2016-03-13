@@ -7,7 +7,8 @@ SRCS=			src/main.c
 LDADD=			-lpthread
 MAKEOBJDIR=
 MAN=
-CC=clang
+CC=				clang
+CFLAGS=			-O2
 
 BINDIR=			/usr/local/sbin
 BINMODE=		0755

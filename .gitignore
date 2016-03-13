@@ -1,3 +1,3 @@
-./bsdjudge
-./src/*.o
-./src/*~
+/bsdjudge
+/src/*.o
+/src/*~
