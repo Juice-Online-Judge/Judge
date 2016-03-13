@@ -18,7 +18,4 @@ command="/usr/local/sbin/${name}"
 command_args="${bsdjudge_flags}"
 pidfile="/var/run/bsdjudge.pid"
 
-#sig_stop="TERM"
-#sig_reload="HUP"
-
 run_rc_command "$1"

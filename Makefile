@@ -3,8 +3,8 @@
 #
 
 PROG=			bsdjudge
-SRCS=			src/main.c
-LDADD=			-lpthread
+SRCS=			src/main.c src/mount.c
+LDADD=			-lutil
 MAKEOBJDIR=
 MAN=
 CC=				clang
