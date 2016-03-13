@@ -34,14 +34,14 @@ int main(int argc, char **argv){
     pid_t otherpid, childpid;
 
     pfh = pidfile_open("/var/run/bsdjudge.pid", 0600, &otherpid);
-    if (pfh == NULL) {
-        if (errno == EEXIST) {
+    if(pfh == NULL){
+        if(errno == EEXIST){
             errx(EXIT_FAILURE, "Daemon already running, pid: %d.", otherpid);
         }
         warn("Cannot open or create pidfile");
     }
 
-    if (daemon(1, 1) == -1) {
+    if(daemon(1, 1) == -1){
         warn("Cannot daemonize");
         pidfile_remove(pfh);
         exit(EXIT_FAILURE);
@@ -61,6 +61,6 @@ int main(int argc, char **argv){
         sleep(1);
     }
 
-     pidfile_remove(pfh);
-     exit(EXIT_SUCCESS);
+    pidfile_remove(pfh);
+    exit(EXIT_SUCCESS);
 }
