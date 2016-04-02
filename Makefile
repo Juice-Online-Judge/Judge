@@ -3,7 +3,7 @@
 #
 
 PROG=			bsdjudge
-SRCS=			src/main.c src/mount.c
+SRCS=			src/main.c src/mount.c src/signal.c
 LDADD=			-lutil
 MAKEOBJDIR=
 MAN=
