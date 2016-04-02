@@ -23,7 +23,7 @@ int signal_init(){
 }
 
 void signal_term(int signo){
-    umount_tmpfs("/usr/jails/run/1");
+    mount_destroy("/usr/jails/run/1");
     exit(EXIT_SUCCESS);
 }
 

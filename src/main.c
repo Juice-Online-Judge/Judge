@@ -34,11 +34,7 @@ int main(int argc, char **argv){
 
     signal_init();
 
-    mount_info(&buf, "/usr/jails/run/1");
-    if(strcmp(buf.type, "tmpfs") == 0){
-        umount_tmpfs("/usr/jails/run/1");
-    }
-    mount_tmpfs("/usr/jails/run/1", 33554432);
+    mount_prepare("/usr/jails/base", "/usr/jails/run/1", 33554432);
 
     while(1){
         sleep(1);
