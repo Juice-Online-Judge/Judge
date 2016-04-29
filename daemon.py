@@ -20,8 +20,8 @@ db = MySQLdb.connect(
 )
 cursor = db.cursor()
 
-whitefunc = ['stdio.h', 'stdlib.h', 'string.h', 'ctype.h', 'time.h', 'stdbool.h', 'unistd.h']
-
+whitefunc = ['stdio.h', 'stdlib.h', 'string.h', 'ctype.h', 'time.h', 'stdbool.h', 'unistd.h', 'math.h']
+blackfunc = ['system']
 #def signal_handler(signal, frame):
 #	die_time = time.strftime("%Y-%m-%d %H:%M:%S")
 #	print die_time+' Good Bye. It has been an honour!'
@@ -70,6 +70,20 @@ def retrieve():
 					print "Error A %d: %s" % (e.args[0], e.args[1])
 				return
 
+		#function = '[a-z|A-Z|0-9|\_][\(]*[\)]'
+		for black in blackfunc:
+			if not CODE.read().find(black) == -1:
+				print CODE.read()
+				end_time = time.strftime("%Y-%m-%d %H:%M:%S")
+				print end_time+' Judge Finished: submission_id='+str(sid)+', result=RF, correctness=0'
+				sql = "INSERT INTO `judges` (`submission_id`, `result`, `correctness`, `judge_message`, `time`) VALUES ("+str(sid)+",\"RF\",0,\"N/A\",0)"
+				try:
+					cursor.execute(sql)
+					db.commit()
+				except MySQLdb.Error as e:
+					print "Error A %d: %s" % (e.args[0], e.args[1])
+				return
+
 		# retrieve question info
 		sql = "SELECT `id`, `judge` FROM `questions` WHERE `id`='"+str(qid)+"'"
 		cursor.execute(sql)
@@ -82,7 +96,7 @@ def retrieve():
 		docker(sid, code, decodejson['input'], decodejson['output'], decodejson['restriction']['time'], decodejson['restriction']['memory'], qid, eid)
 
 	# close connection
-	db.close()
+	#db.close()
 
 def docker(summitID, code, test, ans, timelimit, memlimit, qid, eid):
 	incount = 0;
@@ -109,6 +123,7 @@ def docker(summitID, code, test, ans, timelimit, memlimit, qid, eid):
 	# docker
 	ac_count = 0
 	max_time = 0.0
+	wrong_result = ''
 	while incount > 0:
 		incount -= 1
 		if int(memlimit) < 3:
@@ -121,23 +136,27 @@ def docker(summitID, code, test, ans, timelimit, memlimit, qid, eid):
 		print "-- "+stdout
 		log_split = stdout.split('\t')
 
-		wrong_result = ''
 		#print log_split
 		if not log_split[0].find('AC') == -1:
+			#global ac_count
 			ac_count += 1
 		else:
-			xxx = log_split[0].split('\n')
-			wrong_result = xxx[-1]
+			#xxx = log_split[0].split('\n')
+			#wrong_result = xxx[-1]
+			wrong_result = log_split[0]
 			#wrong_result = re.findall('(?WA)|(?TLE)|(?MLE)|(?CE)|(?RE)|(?SE)', log_split[0])
 		if float(log_split[2]) > max_time:
 			max_time = float(log_split[2])
-
 	# retrieve exam info
-	sql = "SELECT `info` FROM `exam_question` WHERE `exam_id`='"+str(eid)+"' and `question_id`='"+str(qid)+"'"
-	#sql = "SELECT `info` FROM `exam_question` WHERE `exam_id`=27 AND `question_id`=46"
-	cursor.execute(sql)
-	question = cursor.fetchall()
-	decodejson =  json.loads(question[0][0])
+	if not eid == None:
+		sql = "SELECT `info` FROM `exam_question` WHERE `exam_id`='"+str(eid)+"' and `question_id`='"+str(qid)+"'"
+		#sql = "SELECT `info` FROM `exam_question` WHERE `exam_id`=27 AND `question_id`=46"
+		cursor.execute(sql)
+		question = cursor.fetchall()
+		decodejson =  json.loads(question[0][0])
+		qtype = decodejson['type']
+	else:
+		qtype = None
 	#print decodejson
 	# final scoring
 	#end_result = ''
@@ -146,33 +165,34 @@ def docker(summitID, code, test, ans, timelimit, memlimit, qid, eid):
 	#print decodejson['type']
 	#print ac_count
 	#print outcount
-	if decodejson['type'] == None and ac_count == outcount:
+	if qtype == None and ac_count == outcount:
 		end_result = 'AC'
 		judge_msg = 'N/A'
 		correctness = '100'
-	elif decodejson['type'] == None and not ac_count == outcount:
+	elif qtype == None and not ac_count == outcount:
 		end_result = wrong_result;
 		judge_msg = 'N/A'
 		correctness = '0'
-	elif decodejson['type'] == 'proportion' and ac_count == outcount:
+	elif qtype == 'proportion' and ac_count == outcount:
 		end_result = 'AC'
 		judge_msg = 'N/A'
 		correctness = '100'
-	elif decodejson['type'] == 'proportion' and ac_count == 0:
+	elif qtype == 'proportion' and ac_count == 0:
 		end_result = wrong_result
+		#end_result = "PC"
 		judge_msg = 'N/A'
 		correctness = '0'
-	elif decodejson['type'] == 'proportion' and not ac_count == outcount:
+	elif qtype == 'proportion' and not ac_count == outcount:
 		end_result = 'PC'
 		judge_msg = 'N/A'
-		correctness = str(int(ac_count)/outcount)
+		correctness = str(int(ac_count)*100/outcount)
 	else:
 		end_result = 'N/A'
 		judge_msg = 'N/A'
 		correctness = '0'
 	# insert to TABLE judge
 	end_time = time.strftime("%Y-%m-%d %H:%M:%S")
-	print end_result
+	#print end_result
 	print end_time+' Judge Finished: submission_id='+str(summitID)+', result='+end_result+', correctness='+correctness
 	sql = "INSERT INTO `judges` (`submission_id`, `result`, `correctness`, `judge_message`, `time`) VALUES ("+str(summitID)+",\""+str(end_result)+"\","+str(correctness)+",\""+str(judge_msg)+"\","+str(round(max_time, 3))+")"
 	try:
@@ -197,6 +217,8 @@ print start_time+' Daemon Starts. Your order is my command!'
 retrieve()
 
 """ initialize socket"""
+if not os.path.exists('/var/run/judge'):
+    os.mkdir('/var/run/judge')
 serverAddr = '/var/run/judge/judge.sock'
 
 # Make sure the socket does not already exist
