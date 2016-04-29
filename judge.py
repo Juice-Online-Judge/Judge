@@ -1,4 +1,3 @@
-print 'hi'
 """
 To-Do
 
@@ -20,11 +19,15 @@ import locale
 import time
 
 """ define, function, class """
+tle_flag = False
+
 def usage():
 	print("usage:\n\tsummitID stuCode stdin sampleAns timeLimit")
 
 def clean():
-	subprocess.call(["rm", "-f", summitID])
+	#subprocess.call(["rm", "-rf", summitID])
+	if os.path.exists(summitID):
+		os.unlink(summitID)
 
 #def judge(errtype, comment):
 def judge(result, judge_msg, time, memory, openfile):
@@ -42,10 +45,9 @@ class Command(object):
 				self.process = None
 
 		def run(self, timeout):
-				print "timeout = "+str(timeout)
 				def target():
 					start = time.time()
-					self.process = subprocess.Popen(self.cmd, shell=True, stdin=fin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+					self.process = subprocess.Popen([self.cmd], shell=False, stdin=fin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 					pipe = self.process.communicate()
 					runtime = round(time.time() - start, 3)
 					#print("\033[01;36m%s seconds\033[00m" % runtime)
@@ -59,14 +61,16 @@ class Command(object):
 							judge('AC', 'N/A', runtime, '0', '0')
 						else:
 							#judge("\033[01;31mWrong Answer (WA)\033[00m", None)
-							judge('WA', 'N/A', runtime, '0', '0')
+							judge('WA', 'Wrong Answer', runtime, '0', '0')
 				thread = threading.Thread(target=target)
 				thread.start()
 
-				print ">>>>>>>"+timeout
 				thread.join(timeout)
 				if thread.is_alive():
-						self.process.terminate()
+						#print "tle_flag"
+						global tle_flag
+						tle_flag = True
+						self.process.kill()
 						thread.join()
 
 """ command line arg. """
@@ -99,20 +103,22 @@ if ans_status != 0:
 """ main """
 runtime = 0
 # compile
-status, stdout = commands.getstatusoutput("gcc -o "+summitID+" "+stuCode)
+status, stdout = commands.getstatusoutput("gcc -o "+summitID+" "+stuCode+" -lm")
 if status>>8 == 1:
 	#judge("\033[01;31mCompilor Error (CE)\033[00m", "\033[01;31m"+stdout+"\033[00m")
 	judge('CE', stdout, '0', '0', '0')
+if not os.path.exists(summitID):
+	judge('NE', 'No Executable File', 0, 0, 0)
 
 # execute
 command = Command("./"+summitID)
 command.run(timeout=timeLimit)
-if command.process.returncode == -15:
+if command.process.returncode == -15 or tle_flag == True:
 	#judge("\033[01;31mTime Limit Exceed (TLE)\033[00m", None)
-	judge('TLE','N/A', runtime, '0', '0')
-if command.process.returncode != 0 and command.process.returncode != 139:
+	judge('TLE','Time Limit Exceeded', runtime, '0', '0')
+elif command.process.returncode != 0 and command.process.returncode != 139:
 	#judge("\033[01;31mSystem Error (SE)\033[00m", "\033[01;31mReason Unknown, Contact Admin!\033[00m")
-	judge('SE', 'Judge Crashed in Container', '0', '0', '0')
-
+	#judge('SE', 'Judge Crashed in Container', '0', '0', '0')
+	judge('MLE', 'Memory Limit Exceeded', '0', '0', '0')
 """ delete tmp file """
 clean()
