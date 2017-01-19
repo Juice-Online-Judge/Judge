@@ -7,11 +7,13 @@ import pwd
 import grp
 from stat import S_IRUSR, S_IRGRP, S_IROTH
 import subprocess
-import MySQLdb
 import json
 import re
 import time
 import shutils
+
+import MySQLdb
+import docker
 
 """ define, function, class """
 
@@ -23,6 +25,8 @@ db = MySQLdb.connect(
   charset='utf8'
 )
 cursor = db.cursor()
+
+client = docker.from_env()
 
 whitefunc = ['stdio.h', 'stdlib.h', 'string.h', 'ctype.h', 'time.h', 'stdbool.h', 'unistd.h', 'math.h']
 blackfunc = ['system']
@@ -126,19 +130,24 @@ def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
     incount -= 1
     memlimit = max(int(memlimit), 3)
     print("- running with testfile: ", incount)
-    stdout = subprocess.check_output([
-      'docker',
-      'run',
-      '-m', '{0}m'.format(memlimit),
-      '-v', '{0}:/share'.format(shared_path),
+    stdout = client.containers.run(
       'judge',
-      '/usr/bin/python2.7',
-      '/app/judge.py',
-      '/share/code.c',
-      '/share/input_{0}'.format(incount),
-      '/share/output{0}'.format(incount),
-      str(timelimit)
-    ])
+      command=[
+        'python',
+        '/app/judge.py',
+        '/share/code.c',
+        '/share/input_{0}'.format(incount),
+        '/share/output{0}'.format(incount),
+        str(timelimit)
+      ],
+      volumes={
+        shared_path: {
+          'bind': '/share',
+          'mode': 'rw'
+        }
+      },
+      mem_limit='{0}m'.format(memlimit)
+    )
 
     # docker log
     print("-- ", stdout)
@@ -196,6 +205,10 @@ def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
   shutil.rmtree(shared_path)
 
 def main():
+  base_path = os.path.dirname(os.path.realpath(__file__))
+  # Build judge image if not exist
+  if not len(client.images.list(name='judge')):
+    client.images.build(path=base_path)
   """ First, run retrieve() """
   start_time = timestamp()
   print(start_time, ' Daemon Starts. Your order is my command!')
