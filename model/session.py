@@ -29,3 +29,15 @@ def create_session(**kargs):
   manager.set(session)
   return session
 
+def session_scope():
+  manager = SessionManager()
+  if not manager.exist():
+    raise RuntimeError('Session not exist')
+  session = manager.get()
+  try:
+    yield session
+    session.commit()
+  except:
+    session.rollback()
+    raise
+
