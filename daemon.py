@@ -12,20 +12,18 @@ import re
 import time
 import shutils
 
-import MySQLdb
 import docker
+
+from model import create_session, session_scope, Judge, Submission, Question, ExamQuestion
 
 """ define, function, class """
 
-db = MySQLdb.connect(
-  os.environ.get('DB_HOST'),
-  os.environ.get('DB_USERNAME'),
-  os.environ.get('DB_PASSWORD'),
-  os.environ.get('DB_DATEBASE'),
-  charset='utf8'
+create_session(
+  host=os.environ.get('DB_HOST'),
+  username=os.environ.get('DB_USERNAME'),
+  password=os.environ.get('DB_PASSWORD'),
+  database=os.environ.get('DB_DATABASE')
 )
-cursor = db.cursor()
-
 client = docker.from_env()
 
 whitefunc = ['stdio.h', 'stdlib.h', 'string.h', 'ctype.h', 'time.h', 'stdbool.h', 'unistd.h', 'math.h']
@@ -35,13 +33,13 @@ def timestamp():
   time.strftime("%Y-%m-%d %H:%M:%S")
 
 def retrieve():
-  global cursor
-  sql = 'SELECT `id`, `question_id`, `exam_id`, `code` FROM `submissions` WHERE `id` NOT IN (SELECT `submission_id` FROM `judges`)'
-  try:
-    # execute SQL statement
-    cursor.execute(sql)
-  except MySQLdb.Error as e:
-    print('Error B {0}: {1}'.format(e.args[0], e.args[1]))
+  with session_scope() as session:
+    summit = session.query(
+      Submission.id,
+      Submission.question_id,
+      Submission.exam_id,
+      Submission.code
+    ).outerjoin(Judge).filter(Judge.submission_id == None).all()
 
   summit = cursor.fetchall()
   # retrieve all results
@@ -51,11 +49,11 @@ def retrieve():
     return
 
   # retrieve result one by one
-  for record in summit:
-    sid = record[0]
-    qid = record[1]
-    eid = record[2]
-    code_path = record[3]
+  for submission in summit:
+    sid = submission.id
+    qid = submission.question_id
+    eid = submission.exam_id
+    code_path = submission.code
 
     # restrict function
     header = '[a-z|A-Z|\/|0-9]*[\.]h'
@@ -66,12 +64,15 @@ def retrieve():
         # insert to TABLE judge
         end_time = timestamp()
         print('{0} Judge Finished: submission_id={1}, result=RF, correctness=0'.format(end_time, sid))
-        sql = 'INSERT INTO `judges` (`submission_id`, `result`, `correctness`, `judge_message`, `time`) VALUES ({0},"RF",0,"N/A",0)'.format(sid)
-        try:
-          cursor.execute(sql)
-          db.commit()
-        except MySQLdb.Error as e:
-          print('Error A {0}: {1}'.format(e.args[0], e.args[1]))
+        judge_result = Judge(
+          submission_id=sid,
+          result='RE',
+          correctness=0,
+          judge_message='N/A',
+          time=0
+        )
+        with session_scope() as session:
+          session.add(judge_result)
         return
 
     #function = '[a-z|A-Z|0-9|\_][\(]*[\)]'
@@ -80,24 +81,26 @@ def retrieve():
         print(code.read())
         end_time = timestamp()
         print('{0} Judge Finished: submission_id={1}, result=RF, correctness=0'.format(end_time, sid))
-        sql = 'INSERT INTO `judges` (`submission_id`, `result`, `correctness`, `judge_message`, `time`) VALUES ({0},"RF",0,"N/A",0)'.format(sid)
-        try:
-          cursor.execute(sql)
-          db.commit()
-        except MySQLdb.Error as e:
-          print('Error A {0}: {1}'.format(e.args[0], e.args[1]))
+        judge_result = Judge(
+          submission_id=sid,
+          result='RE',
+          correctness=0,
+          judge_message='N/A',
+          time=0
+        )
+        with session_scope() as session:
+          session.add(judge_result)
         return
 
     # retrieve question info
-    sql = "SELECT `id`, `judge` FROM `questions` WHERE `id`='{0}'".format(qid)
-    cursor.execute(sql)
-    question = cursor.fetchall()
-    decodejson =  json.loads(question[0][1])
+    with session_scope() as session:
+      question = session.query(Question.id, Question.judge).filter(Question.id == qid).first()
+    info = json.loads(question.judge)
 
     # initial judge in docker
     ini_time = timestamp()
     print('{0} Judge Initiate: sumission_id={1}'.format(ini_time, sid))
-    docker(sid, code_path, decodejson['input'], decodejson['output'], decodejson['restriction']['time'], decodejson['restriction']['memory'], qid, eid)
+    docker(sid, code_path, info['input'], info['output'], info['restriction']['time'], info['restriction']['memory'], qid, eid)
 
 def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
   from os import path
@@ -161,11 +164,10 @@ def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
       max_time = float(log_split[2])
   # retrieve exam info
   if not eid == None:
-    sql = "SELECT `info` FROM `exam_question` WHERE `exam_id`='{0}' and `question_id`='{1}'".format(eid, qid)
-    cursor.execute(sql)
-    question = cursor.fetchall()
-    decodejson = json.loads(question[0][0])
-    qtype = decodejson['type']
+    with session_scope() as session:
+      exam_question = session.query(ExamQuestion.info).filter(ExamQuestion.exam_id == eid, ExamQuestion.question_id == qid).first()
+    info = json.loads(exam_question.info)
+    qtype = info['type']
   else:
     qtype = None
   if qtype == None and ac_count == outcount:
@@ -195,12 +197,15 @@ def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
   # insert to TABLE judge
   end_time = timestamp()
   print('{0} Judge Finished: submission_id={1}, result={2}, correctness={3}'.format(end_time. summit_id, end_result, correctness))
-  sql = 'INSERT INTO `judges` (`submission_id`, `result`, `correctness`, `judge_message`, `time`) VALUES ({0}, {1}, {2}, {3}, {4})'.format(submit_id, end_result, correctness, judge_msg, round(max_time, 3))
-  try:
-    cursor.execute(sql)
-    db.commit()
-  except MySQLdb.Error as e:
-    print('Error C {0}: {1}'.format(e.args[0], e.args[1]))
+  judge_result = Judge(
+    submission_id=submit_id,
+    result=end_result,
+    correctness=correctness,
+    judge_message=judge_msg,
+    time=round(max_time, 3)
+  )
+  with session_scope() as session:
+    session.add(judge_result)
 
   shutil.rmtree(shared_path)
 
@@ -247,7 +252,6 @@ def main():
     try:
       msg = connection.recv(16)
       if msg:
-        # Perform SQL query
         time.sleep(1)
         retrieve()
 
