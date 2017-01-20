@@ -3,6 +3,7 @@ from __future__ import absolute_import, with_statement, print_function
 import socket
 import sys
 import os
+from os import path
 import pwd
 import grp
 from stat import S_IRUSR, S_IRGRP, S_IROTH
@@ -13,10 +14,13 @@ import time
 import shutils
 
 import docker
+from dotenv import load_dotenv
 
 from model import create_session, session_scope, Judge, Submission, Question, ExamQuestion
 
 """ define, function, class """
+dotenv_path = path.join(path.dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 
 create_session(
   host=os.environ.get('DB_HOST'),
@@ -103,7 +107,6 @@ def retrieve():
     docker(sid, code_path, info['input'], info['output'], info['restriction']['time'], info['restriction']['memory'], qid, eid)
 
 def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
-  from os import path
   incount = 0;
   outcount = 0;
   shared_path = path.abspath(path.join('.', 'share', submmit_id))
