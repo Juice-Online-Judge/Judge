@@ -1,16 +1,31 @@
 from __future__ import absolute_import, with_statement, print_function
+from future.utils import with_metaclass
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.url import URL
 from .base import Base
+from .singleton import Singleton
 
-session = None
+class SessionManager(with_metaclass(Singleton)):
+  def __init__(self):
+    self.session = None
+
+  def get(self):
+    return self.session
+
+  def exist(self):
+    return self.session is not None
+
+  def set(self, session):
+    self.session = session
 
 def create_session(**kargs):
-  if session is not None:
-    return session
+  manager = SessionManager()
+  if manager.exist():
+    return manager.get()
   url = str(URL('mysql', **kargs))
   engine = create_engine(url)
   session = Session(bind=engine)
+  manager.set(session)
   return session
 
