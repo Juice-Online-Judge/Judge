@@ -1,5 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function
-from sqlalchemy import Column, String, TIMESTAMP
+from sqlalchemy import Column, String, TIMESTAMP, ForeginKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import INTEGER
 
