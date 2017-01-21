@@ -6,6 +6,6 @@ from .base import Base
 
 class ExamQuestion(Base):
   __tablename__ = 'exam_question'
-  exam_id = Column(INTEGER(unsigned=True))
-  question_id = Column(INTEGER(unsigned=True))
+  exam_id = Column(INTEGER(unsigned=True), primary_key=True)
+  question_id = Column(INTEGER(unsigned=True), primary_key=True)
   info = Column(String(length=1000))
