@@ -16,6 +16,7 @@ import shutils
 import docker
 from dotenv import load_dotenv
 
+from sqlalchemy.orm import contains_eager
 from model import create_session, session_scope, Judge, Submission, Question, ExamQuestion
 
 """ define, function, class """
@@ -43,7 +44,7 @@ def retrieve():
       Submission.question_id,
       Submission.exam_id,
       Submission.code
-    ).outerjoin(Judge).filter(Judge.submission_id == None).all()
+    ).outerjoin(Judge).join(Submission.question).options(contains_eager(Submission.question)).filter(Judge.submission_id == None).all()
 
   summit = cursor.fetchall()
   # retrieve all results
@@ -52,81 +53,88 @@ def retrieve():
     print('{0} Judge rests. All done!'.format(rest_time))
     return
 
-  # retrieve result one by one
   for submission in summit:
-    sid = submission.id
-    qid = submission.question_id
-    eid = submission.exam_id
-    code_path = submission.code
+    # initial judge in docker
 
-    # restrict function
-    header = '[a-z|A-Z|\/|0-9]*[\.]h'
-    code = open(code_path, 'r')
+    judge_result = judge(submission)
+    with session_scope() as session:
+      session.add(judge_result)
+
+    ini_time = timestamp()
+    print('{0} Judge Initiate: sumission_id={1}'.format(ini_time, sid))
+
+def judge(submission):
+  sid = submission.id
+  qid = submission.question_id
+  eid = submission.exam_id
+  code_path = submission.code
+
+  if filter_header(code_path):
+    end_time = timestamp()
+    print('{0} Judge Finished: submission_id={1}, result=RF, correctness=0'.format(end_time, sid))
+    judge_result = Judge(
+      submission_id=sid,
+      result='RE',
+      correctness=0,
+      judge_message='N/A',
+      time=0
+    )
+    return judge_result
+
+  info = json.loads(submission.question.judge)
+  result = docker(sid, code_path, info['input'], info['output'], info['restriction']['time'], info['restriction']['memory'])
+  outcount = result['outcount']
+  # retrieve exam info
+  if not eid == None:
+    with session_scope() as session:
+      exam_question = session.query(ExamQuestion.info).filter(ExamQuestion.exam_id == eid, ExamQuestion.question_id == qid).first()
+    info = json.loads(exam_question.info)
+    qtype = info['type']
+  else:
+    qtype = None
+
+  correctness = 0
+  judge_msg = 'N/A'
+  if ac_count == outcount:
+    end_result = 'AC'
+    correctness = 100
+  else:
+    end_result = result['wrong_result']
+    if qtype == 'proportion':
+      correctness = int(ac_count) * 100 // outcount
+  # insert to TABLE judge
+  end_time = timestamp()
+  print('{0} Judge Finished: submission_id={1}, result={2}, correctness={3}'.format(end_time. summit_id, end_result, correctness))
+  judge_result = Judge(
+    submission_id=sid,
+    result=end_result,
+    correctness=correctness,
+    judge_message=judge_msg,
+    time=round(result['max_time'], 3)
+  )
+  return judge_result
+
+def filter_header(code_path):
+  # retrieve result one by one
+  header = '[a-z|A-Z|\/|0-9]*[\.]h'
+  with open(code_path, 'r') as code:
     pat = re.findall(header, code.read())
     for  pp in pat:
       if not pp in whitefunc:
-        # insert to TABLE judge
-        end_time = timestamp()
-        print('{0} Judge Finished: submission_id={1}, result=RF, correctness=0'.format(end_time, sid))
-        judge_result = Judge(
-          submission_id=sid,
-          result='RE',
-          correctness=0,
-          judge_message='N/A',
-          time=0
-        )
-        with session_scope() as session:
-          session.add(judge_result)
-        return
+        return True
 
     #function = '[a-z|A-Z|0-9|\_][\(]*[\)]'
     for black in blackfunc:
       if not code.read().find(black) == -1:
         print(code.read())
-        end_time = timestamp()
-        print('{0} Judge Finished: submission_id={1}, result=RF, correctness=0'.format(end_time, sid))
-        judge_result = Judge(
-          submission_id=sid,
-          result='RE',
-          correctness=0,
-          judge_message='N/A',
-          time=0
-        )
-        with session_scope() as session:
-          session.add(judge_result)
-        return
+        return True
+  return False
 
-    # retrieve question info
-    with session_scope() as session:
-      question = session.query(Question.id, Question.judge).filter(Question.id == qid).first()
-    info = json.loads(question.judge)
-
-    # initial judge in docker
-    ini_time = timestamp()
-    print('{0} Judge Initiate: sumission_id={1}'.format(ini_time, sid))
-    docker(sid, code_path, info['input'], info['output'], info['restriction']['time'], info['restriction']['memory'], qid, eid)
-
-def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
-  incount = 0;
-  outcount = 0;
+def docker(summit_id, code, test, ans, timelimit, memlimit):
   shared_path = path.abspath(path.join('.', 'share', submmit_id))
   code_path = path.join(shared_path, 'code.c')
-  # make shared directory
-  os.mkdir(shared_path)
-  os.chmod(shared_path, S_IRUSR | S_IRGRP | S_IROTH)
-  # copy student code
-  shutil.copy(code, code_path)
-  # copy test file
-  for infile in test['files']:
-    shutil.copy(path.join(test['basePath'], infile), path.join(shared_path, 'input_{0}'.format(incount)))
-    incount += 1
-  # copy ans file
-  for outfile in ans['files']:
-    shutil.copy(path.join(ans['basePath'], outfile), path.join(shared_path, 'output_{0}'.format(outcount)))
-    outcount += 1
 
-  if incount != outcount:
-    print('error: file count mismatch, stopping!')
+  incount, outcount = prepare_docker(shared_path, code, code_path, test, ans)
 
   # docker
   ac_count = 0
@@ -165,52 +173,35 @@ def docker(summit_id, code, test, ans, timelimit, memlimit, qid, eid):
       wrong_result = log_split[0]
     if float(log_split[2]) > max_time:
       max_time = float(log_split[2])
-  # retrieve exam info
-  if not eid == None:
-    with session_scope() as session:
-      exam_question = session.query(ExamQuestion.info).filter(ExamQuestion.exam_id == eid, ExamQuestion.question_id == qid).first()
-    info = json.loads(exam_question.info)
-    qtype = info['type']
-  else:
-    qtype = None
-  if qtype == None and ac_count == outcount:
-    end_result = 'AC'
-    judge_msg = 'N/A'
-    correctness = '100'
-  elif qtype == None and not ac_count == outcount:
-    end_result = wrong_result;
-    judge_msg = 'N/A'
-    correctness = '0'
-  elif qtype == 'proportion' and ac_count == outcount:
-    end_result = 'AC'
-    judge_msg = 'N/A'
-    correctness = '100'
-  elif qtype == 'proportion' and ac_count == 0:
-    end_result = wrong_result
-    judge_msg = 'N/A'
-    correctness = '0'
-  elif qtype == 'proportion' and not ac_count == outcount:
-    end_result = 'PC'
-    judge_msg = 'N/A'
-    correctness = str(int(ac_count)*100/outcount)
-  else:
-    end_result = 'N/A'
-    judge_msg = 'N/A'
-    correctness = '0'
-  # insert to TABLE judge
-  end_time = timestamp()
-  print('{0} Judge Finished: submission_id={1}, result={2}, correctness={3}'.format(end_time. summit_id, end_result, correctness))
-  judge_result = Judge(
-    submission_id=submit_id,
-    result=end_result,
-    correctness=correctness,
-    judge_message=judge_msg,
-    time=round(max_time, 3)
-  )
-  with session_scope() as session:
-    session.add(judge_result)
-
   shutil.rmtree(shared_path)
+  return {
+    'incount': incount,
+    'outcount': outcount,
+    'ac_count': ac_count,
+    'time': max_time,
+    'wrong_result': wrong_result
+  }
+
+def prepare_docker(shared_path, code, code_path, test, ans):
+  incount = 0;
+  outcount = 0;
+  # make shared directory
+  os.mkdir(shared_path)
+  os.chmod(shared_path, S_IRUSR | S_IRGRP | S_IROTH)
+  # copy student code
+  shutil.copy(code, code_path)
+  # copy test file
+  for infile in test['files']:
+    shutil.copy(path.join(test['basePath'], infile), path.join(shared_path, 'input_{0}'.format(incount)))
+    incount += 1
+  # copy ans file
+  for outfile in ans['files']:
+    shutil.copy(path.join(ans['basePath'], outfile), path.join(shared_path, 'output_{0}'.format(outcount)))
+    outcount += 1
+  if incount != outcount:
+    print('incount != outcount')
+    raise RuntimeError('incount != outcount')
+  return (incount, outcount)
 
 def main():
   base_path = os.path.dirname(os.path.realpath(__file__))
