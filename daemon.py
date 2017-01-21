@@ -102,6 +102,8 @@ def judge(submission):
     end_result = result['wrong_result']
     if qtype == 'proportion':
       correctness = int(ac_count) * 100 // outcount
+      if ac_count > 0:
+        end_result = 'PC'
   # insert to TABLE judge
   end_time = timestamp()
   print('{0} Judge Finished: submission_id={1}, result={2}, correctness={3}'.format(end_time. summit_id, end_result, correctness))
