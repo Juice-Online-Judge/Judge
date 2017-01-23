@@ -1,0 +1,29 @@
+{
+    "default": {
+        "MySQL-python": "==1.2.5",
+        "click": "==6.7",
+        "SQLAlchemy": "==1.1.5",
+        "requests": "==2.12.5",
+        "six": "==1.10.0",
+        "python-dotenv": "==0.6.2",
+        "websocket-client": "==0.40.0",
+        "ipaddress": "==1.0.18",
+        "future": "==0.16.0",
+        "docker-pycreds": "==0.2.1",
+        "backports.ssl-match-hostname": "==3.5.0.1",
+        "docker": "==2.0.2"
+    },
+    "develop": {
+        "ipython": "*"
+    },
+    "_meta": {
+        "Pipfile-sha256": "1e2b96d1b2c1ff86bde6dc719129076a22ca8867aa236432e21b649f132590f9",
+        "requires": {},
+        "sources": [
+            {
+                "verify_ssl": true,
+                "url": "https://pypi.org/"
+            }
+        ]
+    }
+}
