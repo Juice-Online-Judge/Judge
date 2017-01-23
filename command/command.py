@@ -34,9 +34,9 @@ class Command(object):
       # 52: PD final Q8
       special_case = [23, 26, 40, 41, 42, 43, 52, 54, 56]
       if qid in special_case:
-        self.process = subprocess.Popen(args, shell=True, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.process = subprocess.Popen(args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       else:
-        self.process = subprocess.Popen(args, shell=True, stdin=fin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.process = subprocess.Popen(args, stdin=fin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       pipe = self.process.communicate()
       self._time = round(time.time() - start, 3)
 
