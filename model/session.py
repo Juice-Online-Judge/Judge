@@ -4,7 +4,6 @@ from future.utils import with_metaclass
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.url import URL
-from .base import Base
 from .singleton import Singleton
 
 class SessionManager(with_metaclass(Singleton)):
@@ -42,4 +41,3 @@ def session_scope():
   except:
     session.rollback()
     raise
-

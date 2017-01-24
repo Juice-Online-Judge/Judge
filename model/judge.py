@@ -4,7 +4,6 @@ from sqlalchemy.dialects.mysql import TINYINT, INTEGER
 from sqlalchemy.orm import relationship
 
 from .base import Base
-from .submission import Submission
 
 class Judge(Base):
   __tablename__ = 'judges'
@@ -20,4 +19,3 @@ class Judge(Base):
   judged_at = Column(TIMESTAMP(), nullable=True)
 
   submission = relationship('Submission')
-

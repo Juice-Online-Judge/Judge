@@ -2,7 +2,7 @@ from __future__ import absolute_import, with_statement, print_function
 import os
 from os import path
 from stat import S_IRUSR, S_IRGRP, S_IROTH
-import shutils
+import shutil
 
 import docker
 
@@ -14,7 +14,7 @@ def build_container(base_path):
 
 def container(summit_id, code, test, ans, timelimit, memlimit):
   client = docker.from_env()
-  shared_path = path.abspath(path.join('.', 'share', submmit_id))
+  shared_path = path.abspath(path.join('.', 'share', summit_id))
   code_path = path.join(shared_path, 'code.c')
 
   incount, outcount = prepare_container(shared_path, code, code_path, test, ans)
@@ -66,8 +66,8 @@ def container(summit_id, code, test, ans, timelimit, memlimit):
   }
 
 def prepare_container(shared_path, code, code_path, test, ans):
-  incount = 0;
-  outcount = 0;
+  incount = 0
+  outcount = 0
   # make shared directory
   os.mkdir(shared_path)
   os.chmod(shared_path, S_IRUSR | S_IRGRP | S_IROTH)
@@ -75,11 +75,17 @@ def prepare_container(shared_path, code, code_path, test, ans):
   shutil.copy(code, code_path)
   # copy test file
   for infile in test['files']:
-    shutil.copy(path.join(test['basePath'], infile), path.join(shared_path, 'input_{0}'.format(incount)))
+    shutil.copy(
+      path.join(test['basePath'], infile),
+      path.join(shared_path, 'input_{0}'.format(incount))
+    )
     incount += 1
   # copy ans file
   for outfile in ans['files']:
-    shutil.copy(path.join(ans['basePath'], outfile), path.join(shared_path, 'output_{0}'.format(outcount)))
+    shutil.copy(
+      path.join(ans['basePath'], outfile),
+      path.join(shared_path, 'output_{0}'.format(outcount))
+    )
     outcount += 1
   if incount != outcount:
     print('incount != outcount')
