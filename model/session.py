@@ -1,4 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function
+from contextlib import contextmanager
 from future.utils import with_metaclass
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -29,6 +30,7 @@ def create_session(**kargs):
   manager.set(session)
   return session
 
+@contextmanager
 def session_scope():
   manager = SessionManager()
   if not manager.exist():
