@@ -1,13 +1,14 @@
 [[source]]
-url = "https://pypi.org/"
 verify_ssl = true
+url = "https://pypi.org/"
 
 [packages]
+docker = "*"
 python-dotenv = "*"
 future = "*"
 MySQL-python = "*"
-docker = "*"
 SQLAlchemy = "*"
 
 [dev-packages]
 ipython = "*"
+pylint = "*"

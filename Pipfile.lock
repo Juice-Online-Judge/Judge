@@ -1,29 +1,45 @@
 {
-    "default": {
-        "MySQL-python": "==1.2.5",
-        "click": "==6.7",
-        "SQLAlchemy": "==1.1.5",
-        "requests": "==2.12.5",
-        "six": "==1.10.0",
-        "python-dotenv": "==0.6.2",
-        "websocket-client": "==0.40.0",
-        "ipaddress": "==1.0.18",
-        "future": "==0.16.0",
-        "docker-pycreds": "==0.2.1",
-        "backports.ssl-match-hostname": "==3.5.0.1",
-        "docker": "==2.0.2"
-    },
-    "develop": {
-        "ipython": "*"
-    },
     "_meta": {
-        "Pipfile-sha256": "1e2b96d1b2c1ff86bde6dc719129076a22ca8867aa236432e21b649f132590f9",
-        "requires": {},
         "sources": [
             {
                 "verify_ssl": true,
                 "url": "https://pypi.org/"
             }
-        ]
+        ],
+        "requires": {},
+        "Pipfile-sha256": "a6ed71a34f410129386cc369c1967d777138e43e1ccef6422d528334eb811b7f"
+    },
+    "default": {
+        "docker-pycreds": "==0.2.1",
+        "backports.ssl-match-hostname": "==3.5.0.1",
+        "requests": "==2.12.5",
+        "ipaddress": "==1.0.18",
+        "websocket-client": "==0.40.0",
+        "python-dotenv": "==0.6.2",
+        "docker": "==2.0.2",
+        "future": "==0.16.0",
+        "click": "==6.7",
+        "SQLAlchemy": "==1.1.5",
+        "six": "==1.10.0",
+        "MySQL-python": "==1.2.5"
+    },
+    "develop": {
+        "ipython-genutils": "==0.1.0",
+        "decorator": "==4.0.11",
+        "prompt-toolkit": "==1.0.9",
+        "pathlib2": "==2.2.1",
+        "six": "==1.10.0",
+        "wcwidth": "==0.1.7",
+        "pylint": "*",
+        "traitlets": "==4.3.1",
+        "ptyprocess": "==0.5.1",
+        "Pygments": "==2.2.0",
+        "scandir": "==1.4",
+        "enum34": "==1.1.6",
+        "simplegeneric": "==0.8.1",
+        "pexpect": "==4.2.1",
+        "ipython": "==5.1.0",
+        "pickleshare": "==0.7.4",
+        "backports.shutil-get-terminal-size": "==1.0.0"
     }
 }
